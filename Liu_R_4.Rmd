@@ -1,0 +1,97 @@
+---
+title: "HW4"
+author: "Ruwei Liu"
+date: "October 1, 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+https://github.com/sasadelaqw/hw4.git
+
+#preparation
+```{r}
+library(tidyverse)
+library(stringr)
+library(readxl)
+library(stringi)
+library(tibble)
+farmersmarket <- read.csv("C:/Users/ruwei/Course Material/R/farmers_market.csv")
+kyfprojects <- read_xls("C:/Users/ruwei/Course Material/R/kyfprojects.xls")
+```
+
+
+#question1
+```{r}
+#facebook column
+farmersmarket <- as.tibble(farmersmarket)
+fb <- as.tibble(gsub("(?:.*(?<=.com\\/))([1-9A-Za-z-.]+\\/?)(?:(?=\\/).*)?", "\\1", 
+                      farmersmarket$Facebook, perl = T))
+fb <- as.tibble(gsub("(?:.*(?<=pages\\/))([1-9A-Za-z-.]*)", "\\1", fb[[1]], perl = T))
+fb <- as.tibble(gsub("([1-9A-Za-z-.]*)(?:(?=\\?).*)", "\\1", fb[[1]], perl = T))
+fb <- as.tibble(gsub("([1-9A-Za-z-.]*)(?:(?=\\/).*)", "\\1", fb[[1]], perl = T))
+farmersmarket$Facebook_Name <- fb
+
+#twitter column
+tw <- as.tibble(gsub("(?:.*(?<=.com\\/))([1-9A-Za-z-.]+)(?:(?=\\/).*)?", "\\1", 
+                      farmersmarket$Twitter, perl = T))
+tw <- as.tibble(gsub("@([A-Za-z0-9]+)", "\\1", tw[[1]], perl = T))
+farmersmarket$TWitter_Name <- tw
+```
+
+
+#question2
+```{r}
+farmersmarket$city <- gsub("([A-Za-z]+),.*", "\\1", perl = T, farmersmarket$city)
+farmersmarket$street <- gsub("\\b(St\\.?)|(ST\\.?)", "St", perl = T, farmersmarket$street)
+farmersmarket$street <- gsub("\\b(([Aa][Nn][Dd]))", "&", perl = T, farmersmarket$street)
+```
+
+#question3
+```{r}
+OnlineStates <- farmersmarket %>% 
+  group_by(State) %>% 
+  summarize(Facebook = sum(Facebook != "", na.rm = T)/n(), 
+            Twitter = sum(Twitter != "", na.rm = T)/n())
+```
+
+#question4
+```{r}
+library(forcats)
+farmersmarket$Short_Name <- gsub("(.*)(?:Farme?r?'?s?'? Market)", perl = T, "\\1FM",  farmersmarket$MarketName)
+```
+
+```{r}
+(fm_by_loc <- farmersmarket %>% group_by(Location) %>% summarise(Number = n()) %>% mutate(pct = round(Number/sum(Number) * 
+    100, 2), loc = fct_recode(Location, 
+    `Closed Public St` = "Closed-off public street", 
+    `Wholesale Mkt Bldg` = "Co-located with wholesale market facility", `Educational Bldg` = "Educational institution", 
+    `Faith Bldg` = "Faith-based institution (e.g., church, mosque, synagogue, temple)", 
+    `Fed/State Gov Bldg` = "Federal/State government building grounds", `Healthcare Bldg` = "Healthcare Institution", 
+    `Local Gov Bldg` = "Local government building grounds", 
+    `Private Lot` = "Private business parking lot")) %>% 
+    arrange(desc(Number)))
+```
+
+```{r}
+ggplot(data = fm_by_loc, mapping = aes(x = reorder(loc, Number), y = Number)) + geom_bar(stat = "identity", 
+    fill = "dark green") + coord_flip() + ylim(0, 1000) + labs(title = "Locations of Farmer Markets", 
+    subtitle = "32% Shown, 68% not listed", x = "Location type", y = "Number per location type") + 
+    geom_text(aes(label = paste0(pct, "%")), color = "red", stat = "identity", hjust = -0.1, 
+        size = 4) + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+```
+
+#question5 
+# By looking directly to the kyfprojects, some abbrivations are the same, then i should replace that with new name
+```{r}
+library(forcats)
+kyfprojects$`Programe Name` <- fct_recode(kyfprojects$`Program Name`, 
+                                       'Hunger-Free Communities Grants' ="Hunger-Free Communities",
+                                       'Federal-State Marketing Improvement Program' = "Federal State Marketing Improvement Program")
+(abbri <- unique(kyfprojects$`Program Abbreviation`))
+
+pn <- unique(kyfprojects$`Program Name`)
+```
+
+
